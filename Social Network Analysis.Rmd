@@ -1,0 +1,301 @@
+---
+#title: "Social Network Analysis - Exercise 1"
+#author: Pair07 - Hani Eid - Hernando Suarez Rey
+output: html_document
+---
+
+<div id="bg" style="height:150px;width:150px; float=left; clear=true; margin-left:42%">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/IE_University_logo.svg/1200px-IE_University_logo.svg.png" style="width:100%; height:100%;">
+</div> 
+
+# <span style="color:black; margin-left:32%; font-size:16pt;">Professor: Alejandro Llorente Pinto</span> 
+# <span style="color:#4286f4; margin-left:32%; font-size:22pt;">Social Networks Analysis</span>
+<img src="https://i1.wp.com/blog.convergeforimpact.com/wp-content/uploads/2014/11/nln-network-map.png" style="width:30%; height:30%; margin-left:35%">
+
+# <span style="color:black; font-weight:bold; margin-left:31%; font-size:16pt;">Group: Hernando Suarez - Hani Eid</span>
+
+</br>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+## Load package
+library(igraph)
+set.seed(7)
+```
+
+On this first exercise, we will learn the basic functions of the Igraph package, a great tool to use Social Network Analysis metrics in our projects. We will use in this first exercise a dataset, "mathoverflow-ints.txt", containing interactions between MathOverflow users with the next information:
+
+- Answers to questions
+- Comments to questions
+- Comments to answers
+
+
+
+# Section 1
+
+## Loading data
+
+In this section, the goal is loading the dataset given for this exercise, building the graph object and analyzing basics metrics.
+
+1. Build the graph object with all the interactions. Include the timestamp and the type of the edge as edge attributes.
+2. Describe the values provided by summary function on the graph object.
+3. Validate the graph has been created correctly comparing with the information after reading the file.
+4. Simplify the graph in order to remove loops and multiple edges. After simplifying the graph, a weight attribute should have been created, counting the number of interactions between two users.
+
+```{r Section 1}
+# Set Working Directory
+setwd('C:/Users/Hani/Google Drive/IE/Term 3/7- Social Network Analysis/')
+#  Read dataset
+data <- read.csv('mathoverflow-ints.txt', header=F, sep = ' ')
+colnames(data) = c("V1", "V2", "Timestamp", "Type")
+# 1. Build the graph object with all the interactions
+g <- graph.data.frame(data, directed = T)
+names(edge.attributes(g))
+# 2. Describe the values provided by summary function on the graph object
+summary(g)
+# 3. Validating the graph is correct (rows and unique between V1 and V2)
+df_merged = data.frame(a = c(data[,"V1"], data[,"V2"]))
+vcount(g) == length(unique(df_merged$a))
+ecount(g) == nrow(df)
+# 4. Simplification
+E(g)$weight = 1
+g2 = simplify(g, remove.multiple = TRUE, remove.loops = TRUE,
+              edge.attr.comb = list(weight = "sum", 'ignore'))
+is_simple(g2)
+is_weighted(g2)
+```
+
+<ol>
+<li><span style="color:blue">After reading the data and creating the graph we are able to see that the graph has some attributes: For the vector it has a name (name of nodes) and for the edges there are two, the Timestamp and the Type of connection it is (a2c, a2q, c2a).</span></li>
+<br>
+<li><span style="color:blue">'IGRAPH' tells us that this is an igraph graph. The next two letters ('D' and 'N') stand for directed graph ('D') and named graph ('N'). After the two dashes we have the number of nodes (24.818) and edges (506.550). The second row is optional and denotes the graphs attributes (explained in the previous point).</span></li>
+<br>
+<li><span style="color:blue">The number of Edges is equal to the number of rows in the file read and the number of Nodes is equal to the unique values of both V1 & V2 combined. </span></li>
+<br>
+<li><span style="color:blue">First we need to set the weights for each edge. After doing so we simplify the graph and check if it has actually been simplified and check if the weights exist.</span></li>
+<br>
+</ol>
+
+# Section 2
+
+## Analyzing the graph
+
+In this section, we will use Igraph functions to analyze some basic features:
+
+1. Is the graph connected? If it is not, compute the connected components and analyze the statistical distribution of the size of the resulting components. Do this considering all the links but also using only the different types of edges. 
+2. Analyze the statistical distribution of the "weight" attribute created in the previous section and fit it to a power law distribution. Does it fit well enough? 
+
+```{r Section 2}
+# 1. Is the graph connected.
+vertex_connectivity(g, source = NULL, target = NULL, checks = TRUE)
+is.connected(g2)
+comp = components(g2, mode = c("weak", "strong"))
+hist(comp$csize)
+# 2. Analyze the statistical distribution of the "weight" attribute
+hist(log(E(g2)$weight))
+power.law.fit((E(g2)$weight))
+```
+
+<ol>
+<li><span style="color:blue">There are 0 connectivity within the nodes and when checking the is.connected function we can see it is not. As shown in the graph, there is only one component big enough to take into consideration.</span></li>
+<br>
+<li><span style="color:blue">The graph shows us that the weight distribution is skewed to the right, being most of the weights smaller to 20 (links/edges). As for the power law, we reject the Kolmogorov-Smirnov test which infers that the original data could not have been drawn from the fitted power-law distribution.</span></li>
+<br>
+</ol>
+
+
+# Section 3
+
+## Node degree
+
+A typical analysis when dealing with social networks is studying the degree distribution of the nodes.
+
+1. Visualize the statisical distribution of the node degree.
+2. Again, is it a power-law distribution? Explain why this is the case.
+
+```{r Section 3}
+# 1. Visualize the statistical distribution of the node degree
+plot(degree.distribution(g2), log='xy')
+plot(density(degree(g2)), log='xy')
+# 2. Power-Law
+power.law.fit(degree.distribution(g2))
+```
+<span style="color:blue">
+<ol>
+<li>The degree of a node shows how many connections it has to other nodes. The degree distribution is the probability distribution of those degrees over the network. As seen, most nodes have a lot of edges (which makes the degrees have a high value).</li>
+<li>Yes, it is a power law distribution. This is becase the p-value is greater than 0.05 hence, we cannot reject that the original data could have been drawn from the fitted power-law distribution. This is because most of the connections are centered withing the giant component that contains more than 90% of the nodes and connections.</li>
+</ol>
+</span>
+
+
+# Section 4
+
+## Building connected graphs
+
+In general, in interaction networks, many connected components turn out after creating the graph. However, most of the nodes typically belong to the same giant component. In this section, the goal is:
+
+1. Build a subgraph with all the nodes belonging to the largest connected component.
+2. Validate the graph has been correctly created.
+3. Analyze how node degree has changed from the original graph to this new subgraph. Find out which nodes have now a smaller number of connections and explain why.
+
+
+```{r Section 4}
+# 1. Build a subgraph with all the nodes belonging to the largest connected component
+g3 <- decompose.graph(g2)[[which.max(comp$csize)]]
+# 2. Validate the graph has been correctly created.
+vcount(g3) == length(components(g2)$membership[components(g2)$membership == which.max(comp$csize)])
+sum(V(g3)$name == names(components(g2)$membership[components(g2)$membership == which.max(comp$csize)])) == components(g2)$csize[[which.max(comp$csize)]]
+## Comparing through different ways of creating a subgraph
+g3_1 <- induced_subgraph(g2, groups(components(g2))[[which.max(comp$csize)]])
+vcount(g3) == vcount(g3_1)
+ecount(g3) == ecount(g3_1)
+# 3. Analyze how node degree has changed
+c1 = as.data.frame(degree(g2))
+c2 = data.frame(degree(g3))
+
+c1$id = rownames(c1)
+c2$id = rownames(c2)
+
+c1 = c1[order(as.numeric(c1$id), decreasing = F),]
+c2 = c2[order(as.numeric(c2$id), decreasing = F),]
+c3 = merge(c1,c2, by='id')
+
+#Validation by summing all the True values where the degrees are still the same
+sum(c3$`degree(g2)` == c3$degree.g3.) == nrow(c2)
+
+old_least_connection_nodes = degree(g2)[which(degree(g2) == min(degree(g2)))]
+new_least_connection_nodes = degree(g3)[which(degree(g3) == min(degree(g3)))]
+```
+
+<span style="color:blue">
+<ol>
+<li>We used decompose graph and took the variable created before with the principal components csize of the largest cluster.</li>
+<br>
+<li>We got the count of all the nodes from the subgrpah and compared them with the size of the biggest cluster from the simplified graph. Moreover, we built a subgraph using a different function and compared both of them (vertices and edges).</li>
+<br>
+<li>Node degree has not changed for the vertices in the subgraph before and after the induced.graph(). We created two data frames for the degree of the nodes that are only in the subgraph before and after decomposition and compared the degrees. By comparison, we get the same results in both degree columns.</li>
+<br>
+<li>The node with the least number of connections is now: . This is because before subgraphing we used to have more components and more nodes and some of these nodes had the least degrees. However, after cutting out these nodes by creating the subgraph(), we lose these nodes and now other nodes have the smallest number of connections. The lowest number of connections before was 0 and now in the new subgraph it became 1</li>
+<br>
+</ol>
+</span>
+
+# Section 5
+
+## Visualizing shortest paths
+
+On this previous subgraph, you have to compute:
+
+1. The shortest path from the node with the highest degree to the rest of the graph.
+2. From all these paths, select one path with the maximum length.
+3. Visualize only this path using the plot function.
+4. Visualize this path within the giant component subgraph.
+
+To this end, use the layout.fruchterman.reingold function to place the nodes in the visualization.
+
+```{r Section 5, fig.width=15, fig.height=15}
+# 1. The shortest path from the node with the highest degree to the rest of the graph
+max_degree = which.max(degree(g3))
+shortest = get.shortest.paths(g3, max_degree)
+# 2. From all these paths, select one path with the maximum length
+lengths_paths = sapply(shortest$vpath, length)
+head(sort(lengths_paths, decreasing = T))
+max_length_index = which.max(lengths_paths)
+shortest_path = shortest$vpath[max_length_index]
+index_shortest = unlist(shortest_path)
+# 3. Visualize only this path using the plot function
+sub1 = subgraph(g3, index_shortest)
+plot.igraph(sub1, vertex.label.cex=2, vertex.color = "#4286f4", 
+            vertex.label.color ="white", vertex.size = 15, edge.color = "black",
+            edge.width = 3, edge.arrow.size =1)
+```
+
+
+```{r fig.width=15, fig.height=10}
+# 4. Visualize this path within the giant component subgraph
+## Basic plot of all nodes without highlighting shortest path
+#png("giant_component_basic.png",width = 3840, height = 2160) +
+plot(g3, layout=layout.fruchterman.reingold(g3), 
+       vertex.label.cesx=3, edge.arrow.size=.15, vertex.label = NA, 
+       vertex.size = 3, vertex.frame.color = "white", vertex.frame.width = "5",
+     vertex.color = "#4286f4", line = -3)+ 
+  title(main="SNA - Basic Plot", col.main="black", font.main = 2,
+        cex.main = 3,
+        xlab="", ylab="",
+        col.lab="green", cex.lab=15, line = -1)
+```
+<span style="color:blue">
+<ul>
+<li>Plot of all nodes highlighting shortest path
+<ul>
+<li>Coloring nodes</li>
+<li>Coloring edges</li>
+<li>Modifying Node Sizes</li>
+<li>Modifying Labels and fonts</li>
+<li>Modifying Edge Widths</li>
+<li>Customising the layout's coordinates</li>
+</ul>
+</li></ul>
+</span>
+
+```{r }
+## 5. Plot of all nodes highlighting shortest path
+### 5.1. Coloring nodes
+g3.1 = g3
+V(g3.1)$color <- "#4286f4"
+V(g3.1)[index_shortest]$color = "#4286f4"
+V(g3.1)[57]$color = "#33cc33" # Ending node of shortest path
+### 5.2. Coloring Edges
+Edge_IDS = get.edge.ids(g3.1, c(57, 321, 321, 15569, 15569, 8142, 8142, 8654, 8654, 8697, 8697, 14734))
+E(g3.1)$color <- "grey"
+E(g3.1)[Edge_IDS]$color <- "red"
+V(g3.1)[index_shortest]$edge.width = "20"
+### 5.3. Node Sizes
+node.size = setNames( rep(3,vcount(g3.1)),V(g3.1))
+node.size[index_shortest] = 20
+node.size[57] = 30
+### 5.4. Labels and fonts
+V(g3.1)$label = ""
+V(g3.1)[index_shortest]$label = V(g3.1)[index_shortest]$name
+V(g3.1)$label.cex = 3
+V(g3.1)[57]$label.cex = 5.5
+### 5.5. Edge Widths
+E(g3.1)$e_width = 2
+E(g3.1)[Edge_IDS]$e_width = 10
+### 5.6. Customising the layout
+cutsom_layout = layout.fruchterman.reingold(g3.1)
+#### 5.7. Padding all the nodes downwards
+cutsom_layout[,2] = cutsom_layout[,2] - 10
+#### 5.8. Layout for shortest path nodes
+cutsom_layout[57,] = c(cutsom_layout[57,][1]-20,cutsom_layout[57,][2]+7)
+cutsom_layout[321,] = c(cutsom_layout[321,][1]-12,cutsom_layout[57,][2])
+cutsom_layout[15569,] = c(cutsom_layout[15569,][1]-5,cutsom_layout[57,][2])
+cutsom_layout[8142,] = c(cutsom_layout[8142,][1],cutsom_layout[57,][2])
+cutsom_layout[8654,] = c(cutsom_layout[8654,][1]+7, cutsom_layout[57,][2])
+cutsom_layout[8697,] = c(cutsom_layout[8697,][1]+12,cutsom_layout[57,][2])
+cutsom_layout[14734,] = c(cutsom_layout[14734,][1]+17,cutsom_layout[57,][2])
+```
+
+```{r fig.width=25, fig.height=20}
+### 5.9. Printing and saving graph with shortest path
+plot(g3.1, layout=cutsom_layout, vertex.label.cesx=3, edge.arrow.size=.15,edge.width=E(g3.1)$e_width,
+     vertex.size =node.size, vertex.label= V(g3.1)$label, vertex.frame.color = "white",
+     vertex.label.color = "white") +
+  title(main="SNA - Shortest Path", col.main="black", font.main = 2,
+        cex.main = 5,
+        xlab="", ylab="",
+        col.lab="green", cex.lab=15, line = -1)
+
+# Save to PNG file
+#png("giant_component.png",width = 3840, height = 2160) +
+#plot(g3.1, layout=cutsom_layout, vertex.label.cesx=3, edge.arrow.size=.15,edge.width=E(g3.1)$e_width,
+#     vertex.size =node.size, vertex.label= V(g3.1)$label, vertex.frame.color = "yellow") +
+#  title(main="SNA - Shortest Path", col.main="black", font.main = 2,
+#        cex.main = 10,
+#        sub="Done By: Hernando Suarez & Hani Eid", col.sub="blue", cex.sub = 5,
+#        xlab="", ylab="",
+#        col.lab="green", cex.lab=15, line = -4)
+#dev.off()
+```
+
